@@ -803,7 +803,7 @@ public class LibrariesForLibsInPluginsBlock extends AbstractExternalDependencyFa
         public Provider<String> getActivityCompose() { return getVersion("activityCompose"); }
 
         /**
-         * Version alias <b>agp</b> with value <b>8.5.0</b>
+         * Version alias <b>agp</b> with value <b>8.5.2</b>
          * <p>
          * If the version is a rich version and cannot be represented as a
          * single version string, an empty string is returned.
@@ -893,7 +893,7 @@ public class LibrariesForLibsInPluginsBlock extends AbstractExternalDependencyFa
         public Provider<String> getJunitVersion() { return getVersion("junitVersion"); }
 
         /**
-         * Version alias <b>kotlin</b> with value <b>2.0.0</b>
+         * Version alias <b>kotlin</b> with value <b>2.0.21</b>
          * <p>
          * If the version is a rich version and cannot be represented as a
          * single version string, an empty string is returned.
@@ -903,7 +903,7 @@ public class LibrariesForLibsInPluginsBlock extends AbstractExternalDependencyFa
         public Provider<String> getKotlin() { return getVersion("kotlin"); }
 
         /**
-         * Version alias <b>ksp</b> with value <b>2.0.0-1.0.22</b>
+         * Version alias <b>ksp</b> with value <b>2.0.21-1.0.25</b>
          * <p>
          * If the version is a rich version and cannot be represented as a
          * single version string, an empty string is returned.

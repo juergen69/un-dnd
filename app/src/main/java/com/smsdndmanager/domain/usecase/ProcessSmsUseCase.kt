@@ -29,7 +29,7 @@ class ProcessSmsUseCase @Inject constructor(
     
     // Rate limiting
     private val commandHistory = mutableMapOf<String, Long>()
-    private const val RATE_LIMIT_WINDOW = 60000  // 1 minute
+    private val RATE_LIMIT_WINDOW = 60000  // 1 minute
     
     companion object {
         private const val DEFAULT_COMMAND_PREFIX = "undnd"
