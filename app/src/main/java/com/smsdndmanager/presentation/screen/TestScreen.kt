@@ -18,6 +18,9 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -83,6 +86,7 @@ fun TestScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
     var testResults by remember { mutableStateOf("Test results will appear here...") }
     
     // Message simulation state
@@ -94,10 +98,14 @@ fun TestScreen(
         authorizedNumbers = viewModel.getAuthorizedNumbers()
     }
     
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { padding ->
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
+            .padding(padding)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -198,6 +206,9 @@ fun TestScreen(
                                 val result = viewModel.processTestMessage(simPhoneNumber, simMessage)
                                 appendLine("RESULT: $result")
                             }
+                            
+                            // Show snackbar notification
+                            snackbarHostState.showSnackbar("Test simulation completed")
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -295,6 +306,7 @@ fun TestScreen(
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
+        }
         }
     }
 }

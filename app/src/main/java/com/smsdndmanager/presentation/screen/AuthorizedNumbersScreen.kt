@@ -11,9 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
@@ -22,7 +20,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,7 +40,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.smsdndmanager.R
@@ -58,7 +54,6 @@ fun AuthorizedNumbersScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    var showAddDialog by remember { mutableStateOf(false) }
     var showContactPicker by remember { mutableStateOf(false) }
 
     // Show error messages
@@ -66,15 +61,6 @@ fun AuthorizedNumbersScreen(
         uiState.error?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.clearError()
-        }
-    }
-
-    // Show success message for adding number
-    LaunchedEffect(uiState.addSuccess) {
-        if (uiState.addSuccess) {
-            snackbarHostState.showSnackbar("Number added successfully")
-            showAddDialog = false
-            viewModel.clearAddSuccess()
         }
     }
 
@@ -90,24 +76,13 @@ fun AuthorizedNumbersScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+            FloatingActionButton(
+                onClick = { 
+                    showContactPicker = true
+                    viewModel.loadContacts()
+                }
             ) {
-                // Import from contacts button
-                FloatingActionButton(
-                    onClick = { 
-                        showContactPicker = true
-                        viewModel.loadContacts()
-                    }
-                ) {
-                    Icon(Icons.Default.Person, contentDescription = "Import from contacts")
-                }
-                
-                // Add number manually button
-                FloatingActionButton(onClick = { showAddDialog = true }) {
-                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.btn_add_number))
-                }
+                Icon(Icons.Default.Person, contentDescription = "Import from contacts")
             }
         }
     ) { padding ->
@@ -132,16 +107,6 @@ fun AuthorizedNumbersScreen(
                 }
             }
         }
-    }
-
-    if (showAddDialog) {
-        AddNumberDialog(
-            onDismiss = { showAddDialog = false },
-            onConfirm = { phoneNumber, displayName ->
-                viewModel.addNumber(phoneNumber, displayName)
-            },
-            isLoading = uiState.isLoading
-        )
     }
 
     if (showContactPicker) {
@@ -174,7 +139,7 @@ private fun EmptyNumbersState() {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Tap + to add manually or use contacts icon to import from your phone",
+            text = "Tap the contacts icon to import numbers from your phone",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -221,57 +186,6 @@ private fun NumberCard(
             }
         }
     }
-}
-
-@Composable
-private fun AddNumberDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (phoneNumber: String, displayName: String?) -> Unit,
-    isLoading: Boolean
-) {
-    var phoneNumber by remember { mutableStateOf("") }
-    var displayName by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.btn_add_number)) },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = phoneNumber,
-                    onValueChange = { phoneNumber = it },
-                    label = { Text(stringResource(R.string.label_phone_number)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = displayName,
-                    onValueChange = { displayName = it },
-                    label = { Text(stringResource(R.string.label_display_name)) },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onConfirm(
-                        phoneNumber,
-                        displayName.takeIf { it.isNotBlank() }
-                    )
-                },
-                enabled = phoneNumber.isNotBlank() && !isLoading
-            ) {
-                Text(stringResource(R.string.btn_save))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.btn_cancel))
-            }
-        }
-    )
 }
 
 @Composable
