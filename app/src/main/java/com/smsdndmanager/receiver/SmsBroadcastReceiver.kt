@@ -26,21 +26,35 @@ class SmsBroadcastReceiver : BroadcastReceiver() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     override fun onReceive(context: Context, intent: Intent) {
+        android.util.Log.d("SmsBroadcastReceiver", "Received intent: ${intent.action}")
+        
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
+            android.util.Log.d("SmsBroadcastReceiver", "Not SMS_RECEIVED_ACTION, ignoring")
             return
         }
 
         // Extract SMS messages from the intent
         val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
         if (messages.isNullOrEmpty()) {
+            android.util.Log.d("SmsBroadcastReceiver", "No messages in intent")
             return
         }
 
+        android.util.Log.d("SmsBroadcastReceiver", "Found ${messages.size} message(s)")
+
         // Process each SMS message
         messages.forEach { smsMessage ->
-            val sender = smsMessage.originatingAddress ?: return@forEach
-            val body = smsMessage.messageBody ?: return@forEach
+            val sender = smsMessage.originatingAddress ?: run {
+                android.util.Log.d("SmsBroadcastReceiver", "Missing originating address, skipping")
+                return@forEach
+            }
+            val body = smsMessage.messageBody ?: run {
+                android.util.Log.d("SmsBroadcastReceiver", "Missing message body, skipping")
+                return@forEach
+            }
             val timestamp = smsMessage.timestampMillis
+
+            android.util.Log.d("SmsBroadcastReceiver", "Processing message from: $sender, body: $body")
 
             val sms = SmsMessage(
                 senderNumber = sender,
@@ -55,6 +69,7 @@ class SmsBroadcastReceiver : BroadcastReceiver() {
                     result.getOrNull()?.let { processResult ->
                         when (processResult) {
                             is ProcessSmsUseCase.ProcessResult.Success -> {
+                                android.util.Log.d("SmsBroadcastReceiver", "Successfully processed message: volume set to ${processResult.volumeSet}%")
                                 // Show notification to user
                                 val notificationHelper = com.smsdndmanager.service.DndActionNotificationHelper(context)
                                 notificationHelper.showDndDisabledNotification(
@@ -63,12 +78,15 @@ class SmsBroadcastReceiver : BroadcastReceiver() {
                                 )
                             }
                             is ProcessSmsUseCase.ProcessResult.Ignored -> {
-                                // Ignored - not authorized or no valid command
+                                android.util.Log.d("SmsBroadcastReceiver", "Ignored message: ${processResult.reason}")
                             }
                         }
                     }
+                    result.exceptionOrNull()?.let {
+                        android.util.Log.e("SmsBroadcastReceiver", "Error processing message", it)
+                    }
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    android.util.Log.e("SmsBroadcastReceiver", "Exception processing message", e)
                 }
             }
         }
