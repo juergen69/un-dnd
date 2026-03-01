@@ -58,6 +58,17 @@ class ProcessSmsUseCase @Inject constructor(
         android.util.Log.d("ProcessSmsUseCase", "Parsed command: $command")
         
         if (command == null) {
+            // Log messages from authorized senders even if they don't contain a valid command
+            val logEntry = SmsLogEntry(
+                id = UUID.randomUUID().toString(),
+                senderNumber = smsMessage.senderNumber,
+                command = smsMessage.body.take(50), // Take first 50 chars if no command
+                volumeSet = 0,
+                timestamp = System.currentTimeMillis(),
+                success = false
+            )
+            smsLogRepository.addLog(logEntry)
+            
             return Result.success(ProcessResult.Ignored("No valid command found in: ${smsMessage.body}"))
         }
         
