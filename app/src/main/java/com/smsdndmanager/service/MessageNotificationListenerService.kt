@@ -62,7 +62,14 @@ class MessageNotificationListenerService : NotificationListenerService() {
     override fun onCreate() {
         super.onCreate()
         notificationHelper = DndActionNotificationHelper(this)
+        notificationHelper.showPersistentNotification()
         Log.d(TAG, "Notification Listener Service created")
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        notificationHelper.dismissPersistentNotification()
+        Log.d(TAG, "Notification Listener Service destroyed")
     }
 
     override fun onDestroy() {
