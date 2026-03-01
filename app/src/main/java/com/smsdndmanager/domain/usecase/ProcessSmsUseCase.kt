@@ -1,5 +1,6 @@
 package com.smsdndmanager.domain.usecase
 
+import android.app.NotificationManager
 import android.content.Context
 import android.media.AudioManager
 import android.os.Build
@@ -153,11 +154,26 @@ class ProcessSmsUseCase @Inject constructor(
         val audioManager = context.getSystemService<AudioManager>()
             ?: throw IllegalStateException("AudioManager not available")
         
-        // Disable Do Not Disturb if active (API 24+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && 
-            audioManager.ringerMode !in listOf(AudioManager.RINGER_MODE_NORMAL)
-        ) {
-            audioManager.ringerMode = AudioManager.RINGER_MODE_NORMAL
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        
+        // Disable Do Not Disturb - use both AudioManager and NotificationManager for compatibility
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            // Check if Notification Policy Access is granted first
+            if (notificationManager.isNotificationPolicyAccessGranted) {
+                // Set notification policy to allow all interruptions (disable DND)
+                notificationManager.notificationPolicy = NotificationManager.Policy(
+                    NotificationManager.Policy.INTERRUPTION_FILTER_ALL,
+                    NotificationManager.Policy.PRIORITY_CATEGORY_ALARMS or
+                            NotificationManager.Policy.PRIORITY_CATEGORY_MEDIA or
+                            NotificationManager.Policy.PRIORITY_CATEGORY_SYSTEM,
+                    0
+                )
+            }
+            
+            // Also ensure ringer mode is set to normal
+            if (audioManager.ringerMode !in listOf(AudioManager.RINGER_MODE_NORMAL)) {
+                audioManager.ringerMode = AudioManager.RINGER_MODE_NORMAL
+            }
         }
         
         // Set volume to specified percentage
