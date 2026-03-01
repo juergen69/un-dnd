@@ -50,15 +50,15 @@ class TestViewModel @Inject constructor(
     
     suspend fun processTestMessage(phoneNumber: String, message: String): String {
         val smsMessage = SmsMessage(
-            phoneNumber = phoneNumber,
-            messageBody = message,
+            senderNumber = phoneNumber,
+            body = message,
             timestamp = System.currentTimeMillis()
         )
         
         val result = processSmsUseCase(smsMessage)
         
         return result.fold(
-            onSuccess = { "SUCCESS: DND disabled, volume set to ${it.volumePercent}%" },
+            onSuccess = { "SUCCESS: DND disabled, volume set to ${it.volumeSet}%" },
             onFailure = { "FAILED: ${it.message}" }
         )
     }
