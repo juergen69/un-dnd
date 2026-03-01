@@ -59,14 +59,15 @@ class ImportContactsUseCase @Inject constructor(
         var errorCount = 0
 
         contacts.forEach { contact ->
-            when (val result = importContact(contact)) {
-                is Result.Success -> successCount++
-                is Result.Failure -> {
-                    if (result.exceptionOrNull()?.message?.contains("already") == true) {
-                        duplicateCount++
-                    } else {
-                        errorCount++
-                    }
+            val result = importContact(contact)
+            if (result.isSuccess) {
+                successCount++
+            } else {
+                val error = result.exceptionOrNull()
+                if (error?.message?.contains("already") == true) {
+                    duplicateCount++
+                } else {
+                    errorCount++
                 }
             }
         }
