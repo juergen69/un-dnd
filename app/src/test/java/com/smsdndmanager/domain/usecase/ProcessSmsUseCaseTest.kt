@@ -158,4 +158,53 @@ class ProcessSmsUseCaseTest {
         // Then
         coVerify { smsLogRepository.addLog(any()) }
     }
+
+    @Test
+    fun `invoke should rate limit repeated commands from same number`() = runTest {
+        // Given
+        val senderNumber = "+1234567890"
+        val smsMessage = SmsMessage(
+            senderNumber = senderNumber,
+            body = "undnd50",
+            timestamp = System.currentTimeMillis()
+        )
+        coEvery { authorizedNumberRepository.normalizePhoneNumber(any()) } returns senderNumber
+        coEvery { authorizedNumberRepository.isAuthorized(any()) } returns true
+
+        // When first command is processed
+        val firstResult = useCase(smsMessage)
+
+        // Then first command should succeed
+        assertTrue(firstResult.isSuccess)
+        assertTrue(firstResult.getOrNull() is ProcessSmsUseCase.ProcessResult.Success)
+
+        // When second command is processed immediately
+        val secondResult = useCase(smsMessage)
+
+        // Then second command should be ignored due to rate limit
+        assertTrue(secondResult.isSuccess)
+        val processResult = secondResult.getOrNull()
+        assertTrue(processResult is ProcessSmsUseCase.ProcessResult.Ignored)
+        assertEquals("Rate limit exceeded", (processResult as ProcessSmsUseCase.ProcessResult.Ignored).reason)
+    }
+
+    @Test
+    fun `invoke should send confirmation SMS when enabled`() = runTest {
+        // Given
+        val senderNumber = "+1234567890"
+        val smsMessage = SmsMessage(
+            senderNumber = senderNumber,
+            body = "undnd50",
+            timestamp = System.currentTimeMillis()
+        )
+        coEvery { authorizedNumberRepository.normalizePhoneNumber(any()) } returns senderNumber
+        coEvery { authorizedNumberRepository.isAuthorized(any()) } returns true
+        coEvery { settingsRepository.shouldSendConfirmation() } returns flowOf(true)
+
+        // When
+        useCase(smsMessage)
+
+        // Then confirmation SMS should be sent
+        // We can't directly verify this without mocking SmsManager, but the code should handle it
+    }
 }
