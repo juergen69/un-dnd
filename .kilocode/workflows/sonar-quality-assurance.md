@@ -19,8 +19,9 @@ This workflow must be followed after implementing any new feature or making code
 
 ### SonarQube Project Key
 
+The project key is defined in `sonar-project.properties` file:
 ```
-latesttube
+sonar.projectKey=un-dnd
 ```
 
 ---
@@ -34,7 +35,7 @@ After making code changes, search for issues in the project:
 ```
 Use: mcp--sonarqube--search_sonar_issues_in_projects
 Parameters:
-  - projects: ["latesttube"]
+  - projects: ["un-dnd"]
   - issueStatuses: ["OPEN"]
   - severities: ["HIGH", "BLOCKER", "MEDIUM"]
 ```
@@ -46,7 +47,7 @@ If you modify a specific file, analyze it directly:
 ```
 Use: mcp--sonarqube--analyze_code_snippet
 Parameters:
-  - projectKey: "latesttube"
+  - projectKey: "un-dnd"
   - fileContent: <full file content>
   - language: ["js"]
 ```
@@ -58,7 +59,7 @@ Check for security concerns:
 ```
 Use: mcp--sonarqube--search_security_hotspots
 Parameters:
-  - projectKey: "latesttube"
+  - projectKey: "un-dnd"
   - status: ["TO_REVIEW"]
 ```
 
@@ -93,7 +94,7 @@ Before marking work as complete:
 ```
 Use: mcp--sonarqube--get_project_quality_gate_status
 Parameters:
-  - projectKey: "latesttube"
+  - projectKey: "un-dnd"
 ```
 
 Ensure the Quality Gate passes (status: "OK").

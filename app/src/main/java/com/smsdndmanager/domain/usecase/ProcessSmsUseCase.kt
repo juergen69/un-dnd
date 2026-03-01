@@ -154,12 +154,10 @@ class ProcessSmsUseCase @Inject constructor(
             ?: throw IllegalStateException("AudioManager not available")
         
         // Disable Do Not Disturb if active (API 24+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            if (audioManager.ringerMode == AudioManager.RINGER_MODE_SILENT ||
-                audioManager.ringerMode == AudioManager.RINGER_MODE_VIBRATE
-            ) {
-                audioManager.ringerMode = AudioManager.RINGER_MODE_NORMAL
-            }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && 
+            audioManager.ringerMode !in listOf(AudioManager.RINGER_MODE_NORMAL)
+        ) {
+            audioManager.ringerMode = AudioManager.RINGER_MODE_NORMAL
         }
         
         // Set volume to specified percentage

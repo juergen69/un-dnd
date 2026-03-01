@@ -33,6 +33,10 @@ class MessageNotificationListenerService : NotificationListenerService() {
     companion object {
         private const val TAG = "MessageNotificationService"
         
+        // Phone number validation pattern
+        private const val PHONE_NUMBER_PATTERN = "^[+0-9\\s\\-()]+$"
+        private const val MIN_PHONE_NUMBER_LENGTH = 7
+        
         // Known messaging app package names
         private val MESSAGING_PACKAGES = setOf(
             "com.google.android.apps.messaging",    // Google Messages
@@ -95,7 +99,7 @@ class MessageNotificationListenerService : NotificationListenerService() {
         Log.d(TAG, "Notification extras keys: ${extras.keySet().joinToString()}")
         
         // Extract sender and message from notification
-        val senderDisplay = extractSenderDisplay(extras, packageName)
+        val senderDisplay = extractSenderDisplay(extras)
         val messageText = extractMessageText(extras)
         
         Log.d(TAG, "Extracted sender display: '$senderDisplay', message: '$messageText'")
@@ -128,7 +132,7 @@ class MessageNotificationListenerService : NotificationListenerService() {
         }
     }
     
-    /**
+     /**
      * Try to extract phone numbers directly from notification extras
      */
     private fun extractPhoneNumbersFromNotificationExtras(extras: Bundle): List<String> {
@@ -146,12 +150,7 @@ class MessageNotificationListenerService : NotificationListenerService() {
             if (extras.containsKey(key)) {
                 val value = extras.get(key)
                 if (value is String) {
-                    if (value.matches(Regex("^[+0-9\\s\\-()]+$"))) {
-                        val normalized = value.filter { it.isDigit() || it == '+' }
-                        if (normalized.length >= 7) {
-                            phoneNumbers.add(normalized)
-                        }
-                    }
+                    normalizePhoneNumber(value)?.let { phoneNumbers.add(it) }
                 } else if (value is Bundle) {
                     // Check if this bundle contains phone number info
                     extractPhoneNumberFromBundle(value)?.let { phoneNumbers.add(it) }
@@ -170,17 +169,27 @@ class MessageNotificationListenerService : NotificationListenerService() {
         listOf("phone", "number", "phoneNumber", "normalizedDestination").forEach { key ->
             if (bundle.containsKey(key)) {
                 val value = bundle.getString(key)
-                if (value != null && value.matches(Regex("^[+0-9\\s\\-()]+$"))) {
-                    val normalized = value.filter { it.isDigit() || it == '+' }
-                    if (normalized.length >= 7) {
-                        return normalized
-                    }
+                if (value != null) {
+                    normalizePhoneNumber(value)?.let { return it }
                 }
             }
         }
         
         // Log all keys in the bundle for debugging
         Log.d(TAG, "Phone number bundle keys: ${bundle.keySet().joinToString()}")
+        return null
+    }
+    
+    /**
+     * Normalize and validate a phone number string
+     */
+    private fun normalizePhoneNumber(phoneNumber: String): String? {
+        if (phoneNumber.matches(Regex(PHONE_NUMBER_PATTERN))) {
+            val normalized = phoneNumber.filter { it.isDigit() || it == '+' }
+            if (normalized.length >= MIN_PHONE_NUMBER_LENGTH) {
+                return normalized
+            }
+        }
         return null
     }
 
@@ -237,10 +246,10 @@ class MessageNotificationListenerService : NotificationListenerService() {
         }
     }
 
-    /**
+     /**
      * Extract sender display name from notification extras
      */
-    private fun extractSenderDisplay(extras: Bundle, packageName: String): String {
+    private fun extractSenderDisplay(extras: Bundle): String {
         // Try different keys to find sender info
         val sender = when {
             extras.containsKey(EXTRA_SENDER) -> {
