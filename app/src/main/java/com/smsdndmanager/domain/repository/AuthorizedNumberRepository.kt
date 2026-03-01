@@ -19,6 +19,12 @@ interface AuthorizedNumberRepository {
     suspend fun isAuthorized(phoneNumber: String): Boolean
     
     /**
+     * Get the display name for an authorized phone number
+     * @return display name or null if not found/not authorized
+     */
+    suspend fun getDisplayName(phoneNumber: String): String?
+    
+    /**
      * Add a new authorized number
      */
     suspend fun addNumber(number: AuthorizedNumber): Result<Unit>

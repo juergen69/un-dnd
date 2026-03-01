@@ -81,7 +81,8 @@ class ProcessSmsUseCase @Inject constructor(
                 sendConfirmation(smsMessage.senderNumber, command.percentage)
             }
             
-            Result.success(ProcessResult.Success(command.percentage))
+            val displayName = authorizedNumberRepository.getDisplayName(normalizedNumber) ?: smsMessage.senderNumber
+            Result.success(ProcessResult.Success(command.percentage, displayName))
         } catch (e: Exception) {
             // Log the failure
             val logEntry = SmsLogEntry(
@@ -154,7 +155,7 @@ class ProcessSmsUseCase @Inject constructor(
      * Result of processing an SMS
      */
     sealed class ProcessResult {
-        data class Success(val volumeSet: Int) : ProcessResult()
+        data class Success(val volumeSet: Int, val displayName: String) : ProcessResult()
         data class Ignored(val reason: String) : ProcessResult()
     }
 }

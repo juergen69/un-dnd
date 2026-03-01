@@ -27,6 +27,7 @@ class MessageNotificationListenerService : NotificationListenerService() {
     @Inject
     lateinit var processSmsUseCase: ProcessSmsUseCase
 
+    private lateinit var notificationHelper: DndActionNotificationHelper
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     companion object {
@@ -60,6 +61,7 @@ class MessageNotificationListenerService : NotificationListenerService() {
 
     override fun onCreate() {
         super.onCreate()
+        notificationHelper = DndActionNotificationHelper(this)
         Log.d(TAG, "Notification Listener Service created")
     }
 
@@ -136,7 +138,12 @@ class MessageNotificationListenerService : NotificationListenerService() {
                 result.getOrNull()?.let { processResult ->
                     when (processResult) {
                         is ProcessSmsUseCase.ProcessResult.Success -> {
-                            Log.d(TAG, "DND disabled, volume set to ${processResult.volumeSet}%")
+                            Log.d(TAG, "DND disabled by ${processResult.displayName}, volume set to ${processResult.volumeSet}%")
+                            // Show notification to user
+                            notificationHelper.showDndDisabledNotification(
+                                processResult.displayName,
+                                processResult.volumeSet
+                            )
                         }
                         is ProcessSmsUseCase.ProcessResult.Ignored -> {
                             Log.d(TAG, "Message ignored: sender=$senderIdentifier")
