@@ -160,18 +160,12 @@ class ProcessSmsUseCase @Inject constructor(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             // Check if Notification Policy Access is granted first
             if (notificationManager.isNotificationPolicyAccessGranted) {
-                // Set notification policy to allow all interruptions (disable DND)
-                notificationManager.notificationPolicy = NotificationManager.Policy(
-                    NotificationManager.Policy.INTERRUPTION_FILTER_ALL,
-                    NotificationManager.Policy.PRIORITY_CATEGORY_ALARMS or
-                            NotificationManager.Policy.PRIORITY_CATEGORY_MEDIA or
-                            NotificationManager.Policy.PRIORITY_CATEGORY_SYSTEM,
-                    0
-                )
+                // Set the interruption filter to ALL (disable DND)
+                notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
             }
             
             // Also ensure ringer mode is set to normal
-            if (audioManager.ringerMode !in listOf(AudioManager.RINGER_MODE_NORMAL)) {
+            if (audioManager.ringerMode != AudioManager.RINGER_MODE_NORMAL) {
                 audioManager.ringerMode = AudioManager.RINGER_MODE_NORMAL
             }
         }
