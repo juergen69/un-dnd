@@ -1,0 +1,55 @@
+# Project Rules for KiloCode AI Template
+
+## Directory Structure
+
+- PRD goes in `PRD/<PRD-ID>-<name>/` (feature folder with PRD + tasks)
+- Completed PRDs go in `PRD/done/`
+- Architecture Decision Records go in `PRD/adr/`
+- KiloCode configuration lives in `.kilocode/`
+- Workflows live in `.kilocode/workflows/`
+- Skills live in `.kilocode/skills/`
+
+## Workflow Enforcement
+
+### New Features
+- Every new feature MUST start with the **Feature Planning Workflow** (`.kilocode/workflows/feature-planning.md`)
+- No coding should begin without an approved PRD in `PRD/<PRD-ID>-<name>/`
+- PRDs MUST have measurable acceptance criteria
+
+### Implementation
+- Use the **Implementation Workflow** (`.kilocode/workflows/implementation.md`) to break PRDs into tasks
+- Every task MUST follow the **Coding & QA Workflow** (`.kilocode/workflows/coding-qa.md`)
+- No task is complete without passing SonarQube quality gates
+
+### Quality Gates
+- All code must pass SonarQube analysis with no new BLOCKER or HIGH issues
+- Unit test coverage must be >80% for business logic
+- Security-sensitive code must pass Security mode review
+- All acceptance criteria must be verified before task completion
+
+## Coding Standards
+
+- Write clean, readable code with meaningful names
+- Follow the language's idiomatic conventions
+- Include error handling for all external interactions
+- Document public APIs and complex logic
+- No hardcoded secrets or environment-specific values
+- Use structured logging with context
+- Use conventional commits (feat:, fix:, docs:, refactor:, test:, chore:)
+
+## File Organization
+
+- Keep files focused and single-purpose
+- Follow the project's established directory structure
+- Name files descriptively using the project's naming conventions
+- PRD folders follow: `<PRD-ID>-<short-name>/`
+- Task files follow: `TASK-<PRD-ID>-<SEQ>-<short-description>.md`
+
+## Mode Handoff Protocol
+
+- Frontend/Backend/Mobile/Database → QA (for testing)
+- Frontend/Backend/Mobile → Security (if auth/input/sensitive data involved)
+- All implementation modes → Documentation (for API docs, component docs)
+- DevOps → QA (verify CI pipeline runs tests)
+- DevOps → Security (review infrastructure security)
+- All modes → Orchestrator (report completion)
