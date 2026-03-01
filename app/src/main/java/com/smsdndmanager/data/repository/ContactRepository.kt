@@ -74,7 +74,6 @@ class ContactRepository @Inject constructor(
             return@withContext getAllContacts()
         }
 
-        val contacts = mutableListOf<ContactInfo>()
         val lowerQuery = query.lowercase()
 
         getAllContacts().filter { contact ->
