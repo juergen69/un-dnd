@@ -52,6 +52,7 @@ class ProcessSmsUseCaseTest {
         every { audioManager.setStreamVolume(any(), any(), any()) } returns Unit
         
         coEvery { settingsRepository.shouldSendConfirmation() } returns flowOf(false)
+        coEvery { settingsRepository.getActivationPattern() } returns flowOf("undnd")
         coEvery { smsLogRepository.addLog(any()) } returns Result.success(Unit)
 
         useCase = ProcessSmsUseCase(
@@ -63,7 +64,10 @@ class ProcessSmsUseCaseTest {
     }
 
     @Test
-    fun `parseCommand should extract volume from valid undnd command`() {
+    fun `parseCommand should extract volume from valid undnd command`() = runTest {
+        // Given
+        coEvery { settingsRepository.getActivationPattern() } returns flowOf("undnd")
+        
         // Test various valid commands
         assertEquals(50, useCase.parseCommand("undnd50")?.percentage)
         assertEquals(100, useCase.parseCommand("undnd100")?.percentage)
@@ -72,7 +76,10 @@ class ProcessSmsUseCaseTest {
     }
 
     @Test
-    fun `parseCommand should handle invalid commands`() {
+    fun `parseCommand should handle invalid commands`() = runTest {
+        // Given
+        coEvery { settingsRepository.getActivationPattern() } returns flowOf("undnd")
+        
         assertNull(useCase.parseCommand("hello"))
         assertNull(useCase.parseCommand("undnd"))
         assertNull(useCase.parseCommand("undndabc"))
@@ -81,7 +88,10 @@ class ProcessSmsUseCaseTest {
     }
 
     @Test
-    fun `parseCommand should be case insensitive`() {
+    fun `parseCommand should be case insensitive`() = runTest {
+        // Given
+        coEvery { settingsRepository.getActivationPattern() } returns flowOf("undnd")
+        
         assertEquals(50, useCase.parseCommand("UNDND50")?.percentage)
         assertEquals(50, useCase.parseCommand("UndNd50")?.percentage)
     }

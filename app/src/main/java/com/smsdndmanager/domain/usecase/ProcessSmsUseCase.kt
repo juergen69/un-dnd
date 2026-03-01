@@ -27,8 +27,13 @@ class ProcessSmsUseCase @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     
+    // Rate limiting
+    private val commandHistory = mutableMapOf<String, Long>()
+    private const val RATE_LIMIT_WINDOW = 60000  // 1 minute
+    
     companion object {
-        private val COMMAND_REGEX = Regex("undnd(\\d{1,3})", RegexOption.IGNORE_CASE)
+        private const val DEFAULT_COMMAND_PREFIX = "undnd"
+        private fun getCommandPattern(prefix: String) = Regex("${Regex.escape(prefix)}(\\d{1,3})", RegexOption.IGNORE_CASE)
     }
     
     /**
@@ -51,6 +56,12 @@ class ProcessSmsUseCase @Inject constructor(
             val allNumbers = authorizedNumberRepository.getAllNumbers()
             android.util.Log.d("ProcessSmsUseCase", "Authorized numbers: ${allNumbers}")
             return Result.success(ProcessResult.Ignored("Sender not authorized: $normalizedNumber"))
+        }
+        
+        // Check rate limit
+        if (isRateLimited(normalizedNumber)) {
+            android.util.Log.d("ProcessSmsUseCase", "Rate limit exceeded for: $normalizedNumber")
+            return Result.success(ProcessResult.Ignored("Rate limit exceeded"))
         }
         
         // Parse command from message body
@@ -111,11 +122,25 @@ class ProcessSmsUseCase @Inject constructor(
     }
     
     /**
-     * Parse the volume command from SMS body
-     * Pattern: undnd[0-100] (e.g., undnd50, undnd100)
+     * Check if sender has exceeded rate limit
      */
-    fun parseCommand(message: String): VolumeCommand? {
-        return COMMAND_REGEX.find(message)?.let { match ->
+    private fun isRateLimited(senderNumber: String): Boolean {
+        val now = System.currentTimeMillis()
+        val lastCommandTime = commandHistory[senderNumber]
+        if (lastCommandTime != null && now - lastCommandTime < RATE_LIMIT_WINDOW) {
+            return true
+        }
+        commandHistory[senderNumber] = now
+        return false
+    }
+    
+    /**
+     * Parse the volume command from SMS body
+     * Pattern: [activationPattern][0-100] (e.g., undnd50, undnd100)
+     */
+    suspend fun parseCommand(message: String): VolumeCommand? {
+        val activationPattern = settingsRepository.getActivationPattern().first()
+        return getCommandPattern(activationPattern).find(message)?.let { match ->
             val percentage = match.groupValues[1].toIntOrNull()?.coerceIn(0, 100)
             percentage?.let { VolumeCommand(it) }
         }

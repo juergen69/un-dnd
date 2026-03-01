@@ -77,12 +77,12 @@ class DndActionNotificationHelper(private val context: Context) {
         )
 
         val notification = NotificationCompat.Builder(context, PERSISTENT_CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle("SMS DND Manager")
-            .setContentText("Listening for authorized SMS commands")
+            .setContentText("Running in background - tap for settings")
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setContentIntent(pendingIntent)
-            .setOngoing(true) // Make notification persistent (can't be swiped away)
+            .setOngoing(false) // Allow user to dismiss notification
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .build()
 
