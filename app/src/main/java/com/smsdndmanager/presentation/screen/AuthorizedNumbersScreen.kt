@@ -11,12 +11,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ContactPhone
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,10 +42,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.smsdndmanager.R
 import com.smsdndmanager.domain.model.AuthorizedNumber
+import com.smsdndmanager.domain.model.ContactInfo
 import com.smsdndmanager.presentation.viewmodel.AuthorizedNumbersViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,6 +58,7 @@ fun AuthorizedNumbersScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showAddDialog by remember { mutableStateOf(false) }
+    var showContactPicker by remember { mutableStateOf(false) }
 
     // Show error messages
     LaunchedEffect(uiState.error) {
@@ -60,7 +68,7 @@ fun AuthorizedNumbersScreen(
         }
     }
 
-    // Show success message
+    // Show success message for adding number
     LaunchedEffect(uiState.addSuccess) {
         if (uiState.addSuccess) {
             snackbarHostState.showSnackbar("Number added successfully")
@@ -69,11 +77,36 @@ fun AuthorizedNumbersScreen(
         }
     }
 
+    // Show success message for importing contact
+    LaunchedEffect(uiState.importSuccess) {
+        uiState.importSuccess?.let {
+            snackbarHostState.showSnackbar(it)
+            showContactPicker = false
+            viewModel.clearImportSuccess()
+        }
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.btn_add_number))
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Import from contacts button
+                FloatingActionButton(
+                    onClick = { 
+                        showContactPicker = true
+                        viewModel.loadContacts()
+                    }
+                ) {
+                    Icon(Icons.Default.ContactPhone, contentDescription = "Import from contacts")
+                }
+                
+                // Add number manually button
+                FloatingActionButton(onClick = { showAddDialog = true }) {
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.btn_add_number))
+                }
             }
         }
     ) { padding ->
@@ -109,6 +142,20 @@ fun AuthorizedNumbersScreen(
             isLoading = uiState.isLoading
         )
     }
+
+    if (showContactPicker) {
+        ContactPickerDialog(
+            contacts = uiState.contacts,
+            isLoading = uiState.isLoadingContacts,
+            onDismiss = { showContactPicker = false },
+            onContactSelected = { contact ->
+                viewModel.importContact(contact)
+            },
+            onSearch = { query ->
+                viewModel.searchContacts(query)
+            }
+        )
+    }
 }
 
 @Composable
@@ -126,7 +173,7 @@ private fun EmptyNumbersState() {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = stringResource(R.string.label_add_number_hint),
+            text = "Tap + to add manually or use contacts icon to import from your phone",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -193,7 +240,8 @@ private fun AddNumberDialog(
                     value = phoneNumber,
                     onValueChange = { phoneNumber = it },
                     label = { Text(stringResource(R.string.label_phone_number)) },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
@@ -223,4 +271,103 @@ private fun AddNumberDialog(
             }
         }
     )
+}
+
+@Composable
+private fun ContactPickerDialog(
+    contacts: List<ContactInfo>,
+    isLoading: Boolean,
+    onDismiss: () -> Unit,
+    onContactSelected: (ContactInfo) -> Unit,
+    onSearch: (String) -> Unit
+) {
+    var searchQuery by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Import from Contacts") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(400.dp)
+            ) {
+                // Search field
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { 
+                        searchQuery = it
+                        onSearch(it)
+                    },
+                    label = { Text("Search contacts") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                } else if (contacts.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No contacts found",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        items(contacts) { contact ->
+                            ContactItem(
+                                contact = contact,
+                                onClick = { onContactSelected(contact) }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
+}
+
+@Composable
+private fun ContactItem(
+    contact: ContactInfo,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            Text(
+                text = contact.name,
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                text = contact.phoneNumber,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
 }

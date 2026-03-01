@@ -62,7 +62,8 @@ fun PermissionScreen(onPermissionsGranted: () -> Unit) {
                 val permissionsToRequest = mutableListOf(
                     Manifest.permission.RECEIVE_SMS,
                     Manifest.permission.READ_SMS,
-                    Manifest.permission.MODIFY_AUDIO_SETTINGS
+                    Manifest.permission.MODIFY_AUDIO_SETTINGS,
+                    Manifest.permission.READ_CONTACTS
                 )
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
@@ -125,7 +126,7 @@ fun PermissionScreen(onPermissionsGranted: () -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = "This app needs:\n• SMS access for fallback\n• Notification access for RCS/Chat support\n• DND access to modify settings\n• Audio access to change volume",
+            text = "This app needs:\n• SMS access for fallback\n• Notification access for RCS/Chat support\n• DND access to modify settings\n• Contacts access to import authorized numbers\n• Audio access to change volume",
             style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
