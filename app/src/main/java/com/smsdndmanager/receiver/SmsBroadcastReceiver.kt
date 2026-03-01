@@ -55,7 +55,12 @@ class SmsBroadcastReceiver : BroadcastReceiver() {
                     result.getOrNull()?.let { processResult ->
                         when (processResult) {
                             is ProcessSmsUseCase.ProcessResult.Success -> {
-                                // Successfully processed - log if needed
+                                // Show notification to user
+                                val notificationHelper = com.smsdndmanager.service.DndActionNotificationHelper(context)
+                                notificationHelper.showDndDisabledNotification(
+                                    processResult.displayName,
+                                    processResult.volumeSet
+                                )
                             }
                             is ProcessSmsUseCase.ProcessResult.Ignored -> {
                                 // Ignored - not authorized or no valid command

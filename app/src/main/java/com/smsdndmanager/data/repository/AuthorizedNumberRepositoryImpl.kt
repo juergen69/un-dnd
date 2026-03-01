@@ -29,6 +29,14 @@ class AuthorizedNumberRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getDisplayName(phoneNumber: String): String? {
+        val normalizedInput = normalizePhoneNumber(phoneNumber)
+        val matchingNumber = dataSource.getNumbers().find {
+            normalizePhoneNumber(it.phoneNumber) == normalizedInput
+        }
+        return matchingNumber?.displayName ?: matchingNumber?.phoneNumber
+    }
+
     override suspend fun addNumber(number: AuthorizedNumber): Result<Unit> {
         return try {
             val currentNumbers = dataSource.getNumbers().map { it.toDomainModel() }.toMutableList()
