@@ -72,11 +72,6 @@ class MessageNotificationListenerService : NotificationListenerService() {
         Log.d(TAG, "Notification Listener Service destroyed")
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        Log.d(TAG, "Notification Listener Service destroyed")
-    }
-
     override fun onListenerConnected() {
         super.onListenerConnected()
         Log.d(TAG, "Notification Listener connected")
