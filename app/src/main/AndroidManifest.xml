@@ -12,6 +12,9 @@
     <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.SEND_SMS" />
     
+    <!-- For Android 10+ compatibility -->
+    <uses-permission android:name="android.permission.BROADCAST_SMS" />
+    
     <!-- Audio/Notification Permissions -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
