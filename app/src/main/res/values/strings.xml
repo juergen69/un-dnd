@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SMS DND Manager</string>
+    
+    <!-- Screen Titles -->
+    <string name="title_authorized_numbers">Authorized Numbers</string>
+    <string name="title_settings">Settings</string>
+    <string name="title_logs">Activity Log</string>
+    
+    <!-- Buttons -->
+    <string name="btn_add_number">Add Number</string>
+    <string name="btn_save">Save</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_delete">Delete</string>
+    <string name="btn_grant_permissions">Grant Permissions</string>
+    
+    <!-- Labels -->
+    <string name="label_phone_number">Phone Number</string>
+    <string name="label_display_name">Display Name (Optional)</string>
+    <string name="label_activation_code">Activation Code Pattern</string>
+    <string name="label_send_confirmation">Send Confirmation SMS</string>
+    <string name="label_no_numbers">No authorized numbers yet</string>
+    <string name="label_add_number_hint">Add a phone number that can trigger DND deactivation</string>
+    
+    <!-- Permissions -->
+    <string name="permission_sms_required">SMS permissions are required to listen for activation messages.</string>
+    <string name="permission_dnd_required">Do Not Disturb access is required to modify DND settings.</string>
+    <string name="permission_audio_required">Audio settings permission is required to change ringer volume.</string>
+    
+    <!-- Messages -->
+    <string name="msg_number_added">Number added successfully</string>
+    <string name="msg_number_removed">Number removed</string>
+    <string name="msg_invalid_number">Invalid phone number</string>
+    <string name="msg_duplicate_number">Number already exists</string>
+    <string name="msg_dnd_disabled">DND disabled, volume set to %d%%</string>
+    
+    <!-- Bottom Navigation -->
+    <string name="nav_numbers">Numbers</string>
+    <string name="nav_logs">Logs</string>
+    <string name="nav_settings">Settings</string>
+    
+    <!-- Log Entries -->
+    <string name="log_success">Success</string>
+    <string name="log_failed">Failed</string>
+    <string name="log_from">From: %s</string>
+    <string name="log_volume">Volume: %d%%</string>
+</resources>
