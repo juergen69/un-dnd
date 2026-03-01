@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import com.smsdndmanager.BuildConfig
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -64,7 +65,15 @@ sealed class Screen(val route: String, val title: String) {
 fun MainApp() {
     val navController = rememberNavController()
     var selectedItem by remember { mutableIntStateOf(0) }
-    val items = listOf(Screen.Numbers, Screen.Logs, Screen.Test, Screen.Settings)
+    val items = buildList {
+        add(Screen.Numbers)
+        add(Screen.Logs)
+        // Only show Test tab in debug mode
+        if (BuildConfig.DEBUG) {
+            add(Screen.Test)
+        }
+        add(Screen.Settings)
+    }
     val context = LocalContext.current
     
     // Check and request permissions
@@ -134,8 +143,11 @@ fun NavigationGraph(navController: NavHostController, modifier: Modifier = Modif
         composable(Screen.Logs.route) {
             LogsScreen()
         }
-        composable(Screen.Test.route) {
-            TestScreen()
+        // Only register Test route in debug mode
+        if (BuildConfig.DEBUG) {
+            composable(Screen.Test.route) {
+                TestScreen()
+            }
         }
         composable(Screen.Settings.route) {
             SettingsScreen()
