@@ -71,6 +71,8 @@ class EncryptedPreferencesDataSource @Inject constructor(
     // SMS Logs
     fun getLogsFlow(): Flow<List<SmsLogEntity>> = _logsFlow.asStateFlow()
 
+    fun getLogs(): List<SmsLogEntity> = _logsFlow.value
+
     suspend fun saveLogs(logs: List<SmsLogEntity>) = withContext(Dispatchers.IO) {
         val json = logsToJson(logs)
         encryptedPrefs.edit().putString(KEY_LOGS, json).apply()
