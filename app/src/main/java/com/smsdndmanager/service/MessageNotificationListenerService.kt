@@ -103,8 +103,13 @@ class MessageNotificationListenerService : NotificationListenerService() {
             return
         }
         
-        // Try to resolve sender to phone number(s)
-        val phoneNumbers = resolveSenderToPhoneNumbers(senderDisplay)
+        // Try to extract phone number from notification extras first (for Google Messages)
+        var phoneNumbers = extractPhoneNumbersFromNotificationExtras(extras)
+        
+        if (phoneNumbers.isEmpty()) {
+            // If we couldn't extract directly, try to resolve from display name
+            phoneNumbers = resolveSenderToPhoneNumbers(senderDisplay)
+        }
         
         Log.d(TAG, "Resolved to phone numbers: $phoneNumbers")
         
@@ -119,6 +124,62 @@ class MessageNotificationListenerService : NotificationListenerService() {
                 processMessage(phoneNumber, messageText)
             }
         }
+    }
+    
+    /**
+     * Try to extract phone numbers directly from notification extras
+     */
+    private fun extractPhoneNumbersFromNotificationExtras(extras: Bundle): List<String> {
+        val phoneNumbers = mutableListOf<String>()
+        
+        // Check for common phone number keys
+        listOf(
+            "android.messagingStyleUser",
+            "android.messagingUser",
+            "extra_im_notification_participant_normalized_destination",
+            "sender",
+            "phone",
+            "number"
+        ).forEach { key ->
+            if (extras.containsKey(key)) {
+                val value = extras.get(key)
+                if (value is String) {
+                    if (value.matches(Regex("^[+0-9\\s\\-()]+$"))) {
+                        val normalized = value.filter { it.isDigit() || it == '+' }
+                        if (normalized.length >= 7) {
+                            phoneNumbers.add(normalized)
+                        }
+                    }
+                } else if (value is Bundle) {
+                    // Check if this bundle contains phone number info
+                    extractPhoneNumberFromBundle(value)?.let { phoneNumbers.add(it) }
+                }
+            }
+        }
+        
+        return phoneNumbers.distinct()
+    }
+    
+    /**
+     * Extract phone number from a Bundle
+     */
+    private fun extractPhoneNumberFromBundle(bundle: Bundle): String? {
+        // Try common keys for phone numbers
+        listOf("phone", "number", "phoneNumber", "normalizedDestination").forEach { key ->
+            if (bundle.containsKey(key)) {
+                val value = bundle.getString(key)
+                if (value != null && value.matches(Regex("^[+0-9\\s\\-()]+$"))) {
+                    val normalized = value.filter { it.isDigit() || it == '+' }
+                    if (normalized.length >= 7) {
+                        return normalized
+                    }
+                }
+            }
+        }
+        
+        // Log all keys in the bundle for debugging
+        Log.d(TAG, "Phone number bundle keys: ${bundle.keySet().joinToString()}")
+        return null
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
@@ -181,7 +242,13 @@ class MessageNotificationListenerService : NotificationListenerService() {
         // Try different keys to find sender info
         val sender = when {
             extras.containsKey(EXTRA_SENDER) -> {
-                extras.get(EXTRA_SENDER)?.toString()
+                val senderObj = extras.get(EXTRA_SENDER)
+                if (senderObj is Bundle) {
+                    // Handle case where sender is a Bundle (Google Messages RCS)
+                    extractSenderFromBundle(senderObj)
+                } else {
+                    senderObj?.toString()
+                }
             }
             extras.containsKey("android.messagingSender") -> {
                 extras.getString("android.messagingSender")
@@ -193,6 +260,24 @@ class MessageNotificationListenerService : NotificationListenerService() {
         }
         
         return sender ?: "unknown"
+    }
+    
+    /**
+     * Extract sender info from a Bundle object (used in some messaging apps like Google Messages)
+     */
+    private fun extractSenderFromBundle(bundle: Bundle): String? {
+        // Try common keys in the sender bundle
+        return when {
+            bundle.containsKey("name") -> bundle.getString("name")
+            bundle.containsKey("phone") -> bundle.getString("phone")
+            bundle.containsKey("number") -> bundle.getString("number")
+            bundle.containsKey("display_name") -> bundle.getString("display_name")
+            else -> {
+                // Log all keys in the bundle for debugging
+                Log.d(TAG, "Sender bundle keys: ${bundle.keySet().joinToString()}")
+                null
+            }
+        }
     }
 
     /**
