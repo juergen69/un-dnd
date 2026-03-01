@@ -2,9 +2,11 @@ package com.smsdndmanager.presentation.screen
 
 import android.Manifest
 import android.app.NotificationManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,6 +36,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.smsdndmanager.presentation.theme.SmsDndManagerTheme
+import com.smsdndmanager.service.MessageNotificationListenerService
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -142,5 +145,13 @@ private fun checkAllPermissions(context: Context): Boolean {
     val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     val hasDndAccess = notificationManager.isNotificationPolicyAccessGranted
     
-    return hasSmsPermission && hasDndAccess
+    val hasNotificationAccess = hasNotificationListenerAccess(context)
+    
+    return hasSmsPermission && hasDndAccess && hasNotificationAccess
+}
+
+private fun hasNotificationListenerAccess(context: Context): Boolean {
+    val cn = ComponentName(context, MessageNotificationListenerService::class.java)
+    val flat = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
+    return flat != null && flat.contains(cn.flattenToString())
 }

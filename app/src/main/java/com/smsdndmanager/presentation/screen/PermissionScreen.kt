@@ -2,11 +2,13 @@ package com.smsdndmanager.presentation.screen
 
 import android.Manifest
 import android.app.NotificationManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
+import android.text.TextUtils
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -26,10 +28,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import com.smsdndmanager.service.MessageNotificationListenerService
 
 @Composable
 fun PermissionScreen(onPermissionsGranted: () -> Unit) {
@@ -41,13 +44,10 @@ fun PermissionScreen(onPermissionsGranted: () -> Unit) {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val allGranted = permissions.entries.all { it.value }
-        if (allGranted && canModifyDnd(context)) {
+        if (allGranted && canModifyDnd(context) && hasNotificationAccess(context)) {
             onPermissionsGranted()
-        } else if (!canModifyDnd(context)) {
-            permissionStatus = "Please grant Do Not Disturb access in system settings"
-            showCheckButton = true
         } else {
-            permissionStatus = "SMS permissions are required for this app to work"
+            permissionStatus = getPermissionStatusText(context)
             showCheckButton = true
         }
     }
@@ -68,6 +68,13 @@ fun PermissionScreen(onPermissionsGranted: () -> Unit) {
                     permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
                 }
                 permissionLauncher.launch(permissionsToRequest.toTypedArray())
+            }
+            !hasNotificationAccess(context) -> {
+                permissionStatus = "Notification access required to detect messages (including RCS/Chat)"
+                showCheckButton = true
+                // Open system settings for notification access
+                val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                context.startActivity(intent)
             }
             !canModifyDnd(context) -> {
                 permissionStatus = "Do Not Disturb access required to modify DND settings"
@@ -118,7 +125,7 @@ fun PermissionScreen(onPermissionsGranted: () -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = "This app needs:\n• SMS access to receive commands\n• DND access to modify settings\n• Audio access to change volume",
+            text = "This app needs:\n• SMS access for fallback\n• Notification access for RCS/Chat support\n• DND access to modify settings\n• Audio access to change volume",
             style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -132,7 +139,26 @@ private fun hasSmsPermission(context: Context): Boolean {
     ) == PackageManager.PERMISSION_GRANTED
 }
 
+private fun hasNotificationAccess(context: Context): Boolean {
+    val cn = ComponentName(context, MessageNotificationListenerService::class.java)
+    val flat = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
+    return flat != null && flat.contains(cn.flattenToString())
+}
+
 private fun canModifyDnd(context: Context): Boolean {
     val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     return notificationManager.isNotificationPolicyAccessGranted
+}
+
+private fun getPermissionStatusText(context: Context): String {
+    val missing = mutableListOf<String>()
+    if (!hasSmsPermission(context)) missing.add("SMS")
+    if (!hasNotificationAccess(context)) missing.add("Notification Access")
+    if (!canModifyDnd(context)) missing.add("DND Access")
+    
+    return if (missing.isEmpty()) {
+        "All permissions granted"
+    } else {
+        "Missing permissions: ${missing.joinToString(", ")}"
+    }
 }
