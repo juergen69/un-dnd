@@ -3,9 +3,9 @@ package com.smsdndmanager.presentation.screen
 import android.content.Context
 import android.media.AudioManager
 import android.provider.Settings
-import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,22 +17,77 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.getSystemService
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.smsdndmanager.domain.model.SmsMessage
+import com.smsdndmanager.domain.usecase.ProcessSmsUseCase
+import com.smsdndmanager.domain.repository.AuthorizedNumberRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+
+@HiltViewModel
+class TestViewModel @Inject constructor(
+    private val processSmsUseCase: ProcessSmsUseCase,
+    private val authorizedNumberRepository: AuthorizedNumberRepository
+) : ViewModel() {
+    
+    suspend fun processTestMessage(phoneNumber: String, message: String): String {
+        val smsMessage = SmsMessage(
+            phoneNumber = phoneNumber,
+            messageBody = message,
+            timestamp = System.currentTimeMillis()
+        )
+        
+        val result = processSmsUseCase(smsMessage)
+        
+        return result.fold(
+            onSuccess = { "SUCCESS: DND disabled, volume set to ${it.volumePercent}%" },
+            onFailure = { "FAILED: ${it.message}" }
+        )
+    }
+    
+    suspend fun getAuthorizedNumbers(): List<String> {
+        return authorizedNumberRepository.getAllNumbers().first().map { it.phoneNumber }
+    }
+    
+    fun normalizePhoneNumber(number: String): String {
+        return authorizedNumberRepository.normalizePhoneNumber(number)
+    }
+}
 
 @Composable
-fun TestScreen() {
+fun TestScreen(
+    viewModel: TestViewModel = hiltViewModel()
+) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var testResults by remember { mutableStateOf("Test results will appear here...") }
+    
+    // Message simulation state
+    var simPhoneNumber by remember { mutableStateOf("") }
+    var simMessage by remember { mutableStateOf("undnd50") }
+    var authorizedNumbers by remember { mutableStateOf<List<String>>(emptyList()) }
+    
+    LaunchedEffect(Unit) {
+        authorizedNumbers = viewModel.getAuthorizedNumbers()
+    }
     
     Column(
         modifier = Modifier
@@ -45,6 +100,108 @@ fun TestScreen() {
             text = "Test & Diagnostics",
             style = MaterialTheme.typography.headlineMedium
         )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Authorized Numbers Display
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Authorized Numbers (${authorizedNumbers.size})",
+                    style = MaterialTheme.typography.titleLarge
+                )
+                
+                if (authorizedNumbers.isEmpty()) {
+                    Text(
+                        text = "No authorized numbers configured!\nAdd numbers in the Authorized Numbers tab.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                } else {
+                    authorizedNumbers.forEach { number ->
+                        val normalized = viewModel.normalizePhoneNumber(number)
+                        Text(
+                            text = "• $number\n  (normalized: $normalized)",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Message Simulation
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Simulate Incoming Message",
+                    style = MaterialTheme.typography.titleLarge
+                )
+                
+                Text(
+                    text = "Test if the app recognizes a message from a specific number",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                
+                OutlinedTextField(
+                    value = simPhoneNumber,
+                    onValueChange = { simPhoneNumber = it },
+                    label = { Text("Sender Phone Number") },
+                    placeholder = { Text("+1234567890 or 0676...") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                OutlinedTextField(
+                    value = simMessage,
+                    onValueChange = { simMessage = it },
+                    label = { Text("Message Text") },
+                    placeholder = { Text("undnd50") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                Button(
+                    onClick = {
+                        scope.launch {
+                            val normalizedInput = viewModel.normalizePhoneNumber(simPhoneNumber)
+                            val normalizedAuth = authorizedNumbers.map { viewModel.normalizePhoneNumber(it) }
+                            
+                            testResults = buildString {
+                                appendLine("=== SIMULATION ===")
+                                appendLine("Input number: $simPhoneNumber")
+                                appendLine("Normalized: $normalizedInput")
+                                appendLine("Message: $simMessage")
+                                appendLine()
+                                appendLine("Authorized (normalized):")
+                                normalizedAuth.forEach { appendLine("  - $it") }
+                                appendLine()
+                                appendLine("Match found: ${normalizedAuth.contains(normalizedInput)}")
+                                appendLine()
+                                
+                                val result = viewModel.processTestMessage(simPhoneNumber, simMessage)
+                                appendLine("RESULT: $result")
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = simPhoneNumber.isNotBlank() && simMessage.isNotBlank()
+                ) {
+                    Text("Simulate Message & Process")
+                }
+            }
+        }
         
         Spacer(modifier = Modifier.height(16.dp))
         
@@ -67,18 +224,23 @@ fun TestScreen() {
                     style = MaterialTheme.typography.bodyMedium
                 )
                 
-                Button(
-                    onClick = { testResults = testDndFunctionality(context) },
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Test DND Disable + Volume 50%")
-                }
-                
-                Button(
-                    onClick = { testResults = testDndFunctionality(context, 100) },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Test DND Disable + Volume 100%")
+                    Button(
+                        onClick = { testResults = testDndFunctionality(context, 50) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Vol 50%")
+                    }
+                    
+                    Button(
+                        onClick = { testResults = testDndFunctionality(context, 100) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Vol 100%")
+                    }
                 }
             }
         }

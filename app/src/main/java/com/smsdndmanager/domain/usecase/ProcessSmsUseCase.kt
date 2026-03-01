@@ -36,17 +36,30 @@ class ProcessSmsUseCase @Inject constructor(
      * @return Result indicating success or failure
      */
     suspend operator fun invoke(smsMessage: SmsMessage): Result<ProcessResult> {
+        android.util.Log.d("ProcessSmsUseCase", "Processing message from: ${smsMessage.senderNumber}")
+        android.util.Log.d("ProcessSmsUseCase", "Message body: ${smsMessage.body}")
+        
         // Check if sender is authorized
         val normalizedNumber = authorizedNumberRepository.normalizePhoneNumber(smsMessage.senderNumber)
+        android.util.Log.d("ProcessSmsUseCase", "Normalized number: $normalizedNumber")
+        
         val isAuthorized = authorizedNumberRepository.isAuthorized(normalizedNumber)
+        android.util.Log.d("ProcessSmsUseCase", "Is authorized: $isAuthorized")
         
         if (!isAuthorized) {
-            return Result.success(ProcessResult.Ignored("Sender not authorized"))
+            // Log all authorized numbers for debugging
+            val allNumbers = authorizedNumberRepository.getAllNumbers()
+            android.util.Log.d("ProcessSmsUseCase", "Authorized numbers: ${allNumbers}")
+            return Result.success(ProcessResult.Ignored("Sender not authorized: $normalizedNumber"))
         }
         
         // Parse command from message body
         val command = parseCommand(smsMessage.body)
-            ?: return Result.success(ProcessResult.Ignored("No valid command found"))
+        android.util.Log.d("ProcessSmsUseCase", "Parsed command: $command")
+        
+        if (command == null) {
+            return Result.success(ProcessResult.Ignored("No valid command found in: ${smsMessage.body}"))
+        }
         
         // Execute the command
         return try {

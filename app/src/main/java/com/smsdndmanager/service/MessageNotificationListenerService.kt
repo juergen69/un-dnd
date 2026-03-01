@@ -2,7 +2,9 @@ package com.smsdndmanager.service
 
 import android.app.Notification
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
+import android.provider.ContactsContract
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
@@ -89,19 +91,41 @@ class MessageNotificationListenerService : NotificationListenerService() {
         Log.d(TAG, "Notification extras keys: ${extras.keySet().joinToString()}")
         
         // Extract sender and message from notification
-        val senderInfo = extractSenderInfo(extras, packageName)
+        val senderDisplay = extractSenderDisplay(extras, packageName)
         val messageText = extractMessageText(extras)
         
-        Log.d(TAG, "Extracted sender: '$senderInfo', message: '$messageText'")
+        Log.d(TAG, "Extracted sender display: '$senderDisplay', message: '$messageText'")
         
         if (messageText.isBlank()) {
             Log.w(TAG, "Message text is blank - skipping")
             return
         }
         
-        // Process the message
+        // Try to resolve sender to phone number(s)
+        val phoneNumbers = resolveSenderToPhoneNumbers(senderDisplay)
+        
+        Log.d(TAG, "Resolved to phone numbers: $phoneNumbers")
+        
+        if (phoneNumbers.isEmpty()) {
+            // If we can't resolve to a phone number, try using the display name as-is
+            // (in case the user authorized the contact name)
+            Log.w(TAG, "Could not resolve to phone number, trying display name: $senderDisplay")
+            processMessage(senderDisplay, messageText)
+        } else {
+            // Try each resolved phone number
+            phoneNumbers.forEach { phoneNumber ->
+                processMessage(phoneNumber, messageText)
+            }
+        }
+    }
+
+    override fun onNotificationRemoved(sbn: StatusBarNotification) {
+        // Not needed for this functionality
+    }
+
+    private fun processMessage(senderIdentifier: String, messageText: String) {
         val smsMessage = SmsMessage(
-            senderNumber = senderInfo,
+            senderNumber = senderIdentifier,
             body = messageText,
             timestamp = System.currentTimeMillis()
         )
@@ -113,11 +137,9 @@ class MessageNotificationListenerService : NotificationListenerService() {
                     when (processResult) {
                         is ProcessSmsUseCase.ProcessResult.Success -> {
                             Log.d(TAG, "DND disabled, volume set to ${processResult.volumeSet}%")
-                            // Cancel the notification to show it's been processed
-                            cancelNotification(sbn.key)
                         }
                         is ProcessSmsUseCase.ProcessResult.Ignored -> {
-                            // Not authorized or no valid command - ignore silently
+                            Log.d(TAG, "Message ignored: sender=$senderIdentifier")
                         }
                     }
                 }
@@ -125,10 +147,6 @@ class MessageNotificationListenerService : NotificationListenerService() {
                 Log.e(TAG, "Error processing message", e)
             }
         }
-    }
-
-    override fun onNotificationRemoved(sbn: StatusBarNotification) {
-        // Not needed for this functionality
     }
 
     /**
@@ -150,9 +168,9 @@ class MessageNotificationListenerService : NotificationListenerService() {
     }
 
     /**
-     * Extract sender information from notification extras
+     * Extract sender display name from notification extras
      */
-    private fun extractSenderInfo(extras: Bundle, packageName: String): String {
+    private fun extractSenderDisplay(extras: Bundle, packageName: String): String {
         // Try different keys to find sender info
         val sender = when {
             extras.containsKey(EXTRA_SENDER) -> {
@@ -167,7 +185,65 @@ class MessageNotificationListenerService : NotificationListenerService() {
             else -> null
         }
         
-        return sender ?: extractPhoneNumberFromPackage(packageName)
+        return sender ?: "unknown"
+    }
+
+    /**
+     * Try to resolve a sender display name to phone number(s)
+     * Returns list of phone numbers or empty list if cannot resolve
+     */
+    private fun resolveSenderToPhoneNumbers(senderDisplay: String): List<String> {
+        val phoneNumbers = mutableListOf<String>()
+        
+        // If it looks like a phone number already, return it
+        if (senderDisplay.matches(Regex("^[+0-9\\s\\-()]+$"))) {
+            val cleaned = senderDisplay.filter { it.isDigit() || it == '+' }
+            if (cleaned.length >= 7) {  // Minimum phone number length
+                return listOf(cleaned)
+            }
+        }
+        
+        // Try to look up in contacts
+        try {
+            // Query contacts by display name
+            val uri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI
+            val projection = arrayOf(
+                ContactsContract.CommonDataKinds.Phone.NUMBER,
+                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME
+            )
+            val selection = "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} = ?"
+            val selectionArgs = arrayOf(senderDisplay)
+            
+            contentResolver.query(uri, projection, selection, selectionArgs, null)?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    val number = cursor.getString(
+                        cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                    )
+                    phoneNumbers.add(number)
+                    Log.d(TAG, "Found phone number for '$senderDisplay': $number")
+                }
+            }
+            
+            // Also try partial match
+            if (phoneNumbers.isEmpty()) {
+                val fuzzySelection = "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ?"
+                val fuzzyArgs = arrayOf("%$senderDisplay%")
+                
+                contentResolver.query(uri, projection, fuzzySelection, fuzzyArgs, null)?.use { cursor ->
+                    while (cursor.moveToNext()) {
+                        val number = cursor.getString(
+                            cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                        )
+                        phoneNumbers.add(number)
+                        Log.d(TAG, "Found phone number (fuzzy) for '$senderDisplay': $number")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error looking up contact", e)
+        }
+        
+        return phoneNumbers
     }
 
     /**
@@ -189,13 +265,5 @@ class MessageNotificationListenerService : NotificationListenerService() {
         }
         
         return text ?: ""
-    }
-
-    /**
-     * Try to extract phone number from package info (fallback)
-     */
-    private fun extractPhoneNumberFromPackage(packageName: String): String {
-        // This is a fallback - ideally we get the actual sender from notification
-        return "unknown"
     }
 }
