@@ -74,23 +74,30 @@ class MessageNotificationListenerService : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val packageName = sbn.packageName
         
+        Log.d(TAG, "Notification received from: $packageName")
+        
         // Only process notifications from messaging apps
         if (!isMessagingApp(packageName)) {
+            Log.d(TAG, "Ignoring - not a messaging app")
             return
         }
         
         val notification = sbn.notification
         val extras = notification.extras
         
+        // Log all extras for debugging
+        Log.d(TAG, "Notification extras keys: ${extras.keySet().joinToString()}")
+        
         // Extract sender and message from notification
         val senderInfo = extractSenderInfo(extras, packageName)
         val messageText = extractMessageText(extras)
         
+        Log.d(TAG, "Extracted sender: '$senderInfo', message: '$messageText'")
+        
         if (messageText.isBlank()) {
+            Log.w(TAG, "Message text is blank - skipping")
             return
         }
-        
-        Log.d(TAG, "Message from $senderInfo: $messageText")
         
         // Process the message
         val smsMessage = SmsMessage(

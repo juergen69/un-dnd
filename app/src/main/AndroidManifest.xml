@@ -22,6 +22,9 @@
     <!-- Phone state for better number matching -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     
+    <!-- Contacts permission for importing authorized numbers -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    
     <!-- Notification Listener permission -->
     <uses-permission android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" />
 

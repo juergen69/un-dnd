@@ -3,6 +3,8 @@ package com.smsdndmanager.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.smsdndmanager.domain.model.AuthorizedNumber
+import com.smsdndmanager.domain.model.ContactInfo
+import com.smsdndmanager.domain.usecase.ImportContactsUseCase
 import com.smsdndmanager.domain.usecase.ManageAuthorizedNumbersUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,7 +18,8 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class AuthorizedNumbersViewModel @Inject constructor(
-    private val manageNumbersUseCase: ManageAuthorizedNumbersUseCase
+    private val manageNumbersUseCase: ManageAuthorizedNumbersUseCase,
+    private val importContactsUseCase: ImportContactsUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthorizedNumbersUiState())
@@ -73,6 +76,60 @@ class AuthorizedNumbersViewModel @Inject constructor(
         }
     }
 
+    fun loadContacts() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoadingContacts = true)
+            try {
+                val contacts = importContactsUseCase.getAllContacts()
+                _uiState.value = _uiState.value.copy(
+                    contacts = contacts,
+                    isLoadingContacts = false
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = "Failed to load contacts: ${e.message}",
+                    isLoadingContacts = false
+                )
+            }
+        }
+    }
+
+    fun searchContacts(query: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoadingContacts = true)
+            try {
+                val contacts = importContactsUseCase.searchContacts(query)
+                _uiState.value = _uiState.value.copy(
+                    contacts = contacts,
+                    isLoadingContacts = false
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = "Failed to search contacts: ${e.message}",
+                    isLoadingContacts = false
+                )
+            }
+        }
+    }
+
+    fun importContact(contact: ContactInfo) {
+        viewModelScope.launch {
+            val result = importContactsUseCase.importContact(contact)
+            result.fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(
+                        importSuccess = "Contact '${contact.name}' imported successfully"
+                    )
+                },
+                onFailure = { error ->
+                    _uiState.value = _uiState.value.copy(
+                        error = error.message ?: "Failed to import contact"
+                    )
+                }
+            )
+        }
+    }
+
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
     }
@@ -80,11 +137,18 @@ class AuthorizedNumbersViewModel @Inject constructor(
     fun clearAddSuccess() {
         _uiState.value = _uiState.value.copy(addSuccess = false)
     }
+
+    fun clearImportSuccess() {
+        _uiState.value = _uiState.value.copy(importSuccess = null)
+    }
 }
 
 data class AuthorizedNumbersUiState(
     val numbers: List<AuthorizedNumber> = emptyList(),
+    val contacts: List<ContactInfo> = emptyList(),
     val isLoading: Boolean = true,
+    val isLoadingContacts: Boolean = false,
     val error: String? = null,
-    val addSuccess: Boolean = false
+    val addSuccess: Boolean = false,
+    val importSuccess: String? = null
 )
