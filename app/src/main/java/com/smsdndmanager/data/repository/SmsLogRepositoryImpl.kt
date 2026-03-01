@@ -28,7 +28,7 @@ class SmsLogRepositoryImpl @Inject constructor(
 
     override suspend fun addLog(entry: SmsLogEntry): Result<Unit> {
         return try {
-            val currentLogs = dataSource.getLogs().map { it.toDomainModel() }.toMutableList()
+            val currentLogs = dataSource.getLogsFlow().value.map { it.toDomainModel() }.toMutableList()
             currentLogs.add(0, entry) // Add to beginning (newest first)
             
             // Keep only the most recent entries

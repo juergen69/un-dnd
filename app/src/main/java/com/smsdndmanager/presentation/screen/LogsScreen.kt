@@ -13,7 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -139,7 +139,7 @@ private fun LogEntryCard(log: SmsLogEntry) {
             }
             
             Icon(
-                imageVector = if (log.success) Icons.Default.CheckCircle else Icons.Default.Error,
+                imageVector = if (log.success) Icons.Default.CheckCircle else Icons.Default.Warning,
                 contentDescription = if (log.success) "Success" else "Failed",
                 tint = if (log.success) SuccessGreen else ErrorRed
             )
