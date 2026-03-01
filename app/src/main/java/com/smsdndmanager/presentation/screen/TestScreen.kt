@@ -58,7 +58,12 @@ class TestViewModel @Inject constructor(
         val result = processSmsUseCase(smsMessage)
         
         return result.fold(
-            onSuccess = { "SUCCESS: DND disabled, volume set to ${it.volumeSet}%" },
+            onSuccess = { successResult ->
+                when (successResult) {
+                    is ProcessSmsUseCase.ProcessResult.Success -> "SUCCESS: DND disabled, volume set to ${successResult.volumeSet}%"
+                    is ProcessSmsUseCase.ProcessResult.Ignored -> "IGNORED: ${successResult.reason}"
+                }
+            },
             onFailure = { "FAILED: ${it.message}" }
         )
     }
